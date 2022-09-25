@@ -36,11 +36,12 @@
 - (void)centralManagerDidUpdateState:(CBCentralManager *)central {
     if(central.state >= CBManagerStatePoweredOn) {
         NSLog(@"Starting scan");
-        [centralManager_ scanForPeripheralsWithServices:nil options:nil];
+        [centralManager_ scanForPeripheralsWithServices:@[serviceUuid_] options:nil];
     }
 }
 
 - (void)centralManager:(CBCentralManager *)central didDiscoverPeripheral:(CBPeripheral *)peripheral advertisementData:(NSDictionary<NSString *, id> *)advertisementData RSSI:(NSNumber *)RSSI {
+    NSLog(@"Discovered %@", peripheral.name);
     if([@"iOS Demo" isEqualToString:advertisementData[CBAdvertisementDataLocalNameKey]]) {
         peripheral_ = peripheral;
         [centralManager_ stopScan];
