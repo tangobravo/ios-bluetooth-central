@@ -16,7 +16,7 @@
 {
     CBCentralManager* centralManager_;
     CBUUID* serviceUuid_;
-    CBUUID* characteristicUuid_;
+    CBUUID* countCharacteristicUuid_;
     
     CBPeripheral* peripheral_;
 }
@@ -30,7 +30,7 @@
 - (void)startClient {
     centralManager_ = [[CBCentralManager alloc] initWithDelegate:self queue:nil options:nil];
     serviceUuid_ = [CBUUID UUIDWithString:@"13640001-4EC4-4D67-AEAC-380C85DF4043"];
-    characteristicUuid_ = [CBUUID UUIDWithString:@"13640002-4EC4-4D67-AEAC-380C85DF4043"];
+    countCharacteristicUuid_ = [CBUUID UUIDWithString:@"13640002-4EC4-4D67-AEAC-380C85DF4043"];
 }
 
 - (void)centralManagerDidUpdateState:(CBCentralManager *)central {
@@ -69,7 +69,7 @@
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverCharacteristicsForService:(CBService *)service error:(nullable NSError *)error {
     for (CBCharacteristic *characteristic in service.characteristics) {
         NSLog(@"Discovered characteristic %@", characteristic);
-        if([characteristic.UUID.data isEqualToData:characteristicUuid_.data]) {
+        if([characteristic.UUID.data isEqualToData:countCharacteristicUuid_.data]) {
             NSLog(@"Found the one we want");
             [peripheral setNotifyValue:YES forCharacteristic:characteristic];
         }
@@ -80,7 +80,7 @@
     uint64_t callbackTime = getMachTimestampUs();
     static uint64_t lastCallbackTime = 0;
     
-    if([characteristic.UUID.data isEqualToData:characteristicUuid_.data]) {
+    if([characteristic.UUID.data isEqualToData:countCharacteristicUuid_.data]) {
         // Update the controller state from the BLE data
         const uint16_t* cbData = (const uint16_t*)characteristic.value.bytes;
         NSLog(@"Received updated count: %hu, gap %llu", cbData[0], callbackTime - lastCallbackTime);
