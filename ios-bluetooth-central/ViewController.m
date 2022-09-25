@@ -8,6 +8,17 @@
 #import "ViewController.h"
 #import <mach/mach_time.h>
 
+static uint64_t getMachTimestampUs() {
+    // Get conversion factors from ticks to nanoseconds
+    struct mach_timebase_info timebase;
+    mach_timebase_info(&timebase);
+    
+    // convert to us
+    uint64_t ticks = mach_absolute_time();
+    uint64_t machTimeUs = (ticks * timebase.numer) / (timebase.denom * 1000);
+    return machTimeUs;
+}
+
 @interface ViewController ()
 
 @end
@@ -89,18 +100,6 @@
         }
         lastCallbackTime = callbackTime;
     }
-}
-
-
-uint64_t getMachTimestampUs() {
-    // Get conversion factors from ticks to nanoseconds
-    struct mach_timebase_info timebase;
-    mach_timebase_info(&timebase);
-    
-    // convert to us
-    uint64_t ticks = mach_absolute_time();
-    uint64_t machTimeUs = (ticks * timebase.numer) / (timebase.denom * 1000);
-    return machTimeUs;
 }
 
 @end
