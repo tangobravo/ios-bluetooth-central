@@ -28,6 +28,8 @@ static uint64_t getMachTimestampUs() {
     CBCentralManager* centralManager_;
     CBUUID* serviceUuid_;
     CBUUID* countCharacteristicUuid_;
+    CBUUID* channelCharacteristicUuid_;
+    CBL2CAPChannel* openChannel_;
     
     CBPeripheral* peripheral_;
 }
@@ -42,6 +44,7 @@ static uint64_t getMachTimestampUs() {
     centralManager_ = [[CBCentralManager alloc] initWithDelegate:self queue:nil options:nil];
     serviceUuid_ = [CBUUID UUIDWithString:@"13640001-4EC4-4D67-AEAC-380C85DF4043"];
     countCharacteristicUuid_ = [CBUUID UUIDWithString:@"13640002-4EC4-4D67-AEAC-380C85DF4043"];
+    channelCharacteristicUuid_ = [CBUUID UUIDWithString:@"13640003-4EC4-4D67-AEAC-380C85DF4043"];
 }
 
 - (void)centralManagerDidUpdateState:(CBCentralManager *)central {
@@ -81,8 +84,12 @@ static uint64_t getMachTimestampUs() {
     for (CBCharacteristic *characteristic in service.characteristics) {
         NSLog(@"Discovered characteristic %@", characteristic);
         if([characteristic.UUID.data isEqualToData:countCharacteristicUuid_.data]) {
-            NSLog(@"Found the one we want");
+            NSLog(@"Found the notification characteristic");
             [peripheral setNotifyValue:YES forCharacteristic:characteristic];
+        }
+        if([characteristic.UUID.data isEqualToData:channelCharacteristicUuid_.data]) {
+            NSLog(@"Found the L2CAP PSM characteristic, asking for a read");
+            [peripheral readValueForCharacteristic:characteristic];
         }
     }
 }
@@ -100,6 +107,32 @@ static uint64_t getMachTimestampUs() {
         }
         lastCallbackTime = callbackTime;
     }
+    if([characteristic.UUID isEqual:channelCharacteristicUuid_]) {
+        if(characteristic.value != nil && characteristic.value.length == 2) {
+            const uint16_t* cbData = (const uint16_t*)characteristic.value.bytes;
+            NSLog(@"Read L2CAP channel PSM: %hu", cbData[0]);
+            [peripheral openL2CAPChannel:cbData[0]];
+        }
+    }
+}
+
+- (void)peripheral:(CBPeripheral *)peripheral didOpenL2CAPChannel:(nullable CBL2CAPChannel *)channel error:(nullable NSError *)error
+{
+    NSLog(@"Opened L2CAP Channel");
+    if(error != nil) {
+        NSLog(@"Error: %@", error);
+        return;
+    }
+    openChannel_ = channel;
+    [openChannel_.inputStream open];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1000000000), dispatch_get_main_queue(), ^{
+        char inputBuffer[10];
+        NSInteger bytesRead = [self->openChannel_.inputStream read:(uint8_t*)inputBuffer maxLength:10];
+        if(bytesRead == -1) {
+            NSLog(@"Stream error %@", self->openChannel_.inputStream.streamError);
+        }
+        NSLog(@"Read %li bytes: %s", bytesRead, inputBuffer);
+    });
 }
 
 @end
