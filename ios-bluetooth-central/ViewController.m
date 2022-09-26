@@ -85,7 +85,7 @@ static uint64_t getMachTimestampUs() {
         NSLog(@"Discovered characteristic %@", characteristic);
         if([characteristic.UUID.data isEqualToData:countCharacteristicUuid_.data]) {
             NSLog(@"Found the notification characteristic");
-            [peripheral setNotifyValue:YES forCharacteristic:characteristic];
+            //[peripheral setNotifyValue:YES forCharacteristic:characteristic];
         }
         if([characteristic.UUID.data isEqualToData:channelCharacteristicUuid_.data]) {
             NSLog(@"Found the L2CAP PSM characteristic, asking for a read");
