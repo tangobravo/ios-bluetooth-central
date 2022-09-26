@@ -124,15 +124,36 @@ static uint64_t getMachTimestampUs() {
         return;
     }
     openChannel_ = channel;
+    [openChannel_.inputStream setDelegate:self];
+    [openChannel_.inputStream scheduleInRunLoop:[NSRunLoop currentRunLoop]
+                                        forMode:NSDefaultRunLoopMode];
     [openChannel_.inputStream open];
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1000000000), dispatch_get_main_queue(), ^{
-        char inputBuffer[10];
-        NSInteger bytesRead = [self->openChannel_.inputStream read:(uint8_t*)inputBuffer maxLength:10];
-        if(bytesRead == -1) {
-            NSLog(@"Stream error %@", self->openChannel_.inputStream.streamError);
-        }
-        NSLog(@"Read %li bytes: %s", bytesRead, inputBuffer);
-    });
 }
+
+- (void)stream:(NSStream *)stream handleEvent:(NSStreamEvent)eventCode {
+    switch(eventCode) {
+        case NSStreamEventHasBytesAvailable:
+        {
+            uint64_t callbackTime = getMachTimestampUs();
+            static uint64_t lastCallbackTime = 0;
+            
+            uint8_t buf[1024];
+            NSInteger len = 0;
+            len = [(NSInputStream *)stream read:buf maxLength:1024];
+            if(len > 0) {
+                NSLog(@"Read %li bytes, gap %llu", len, callbackTime - lastCallbackTime);
+                lastCallbackTime = callbackTime;
+                for(int i = 0; i < len - 1; i += 2) {
+                    NSLog(@"Updated count %hu", *(uint16_t*)(buf + i));
+                }
+            } else {
+                NSLog(@"no buffer!");
+            }
+            break;
+        }
+            // continued
+    }
+}
+
 
 @end
