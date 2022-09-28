@@ -5,6 +5,9 @@
 //  Created by Simon Taylor on 23/09/2022.
 //
 
+#define ENABLE_CHARACTERISTIC_UPDATES
+#define ENABLE_L2CAP_UPDATES
+
 #import "ViewController.h"
 
 #import <mach/mach_time.h>
@@ -96,7 +99,9 @@ static uint64_t getMachTimestampUs() {
         NSLog(@"Discovered characteristic %@", characteristic);
         if([characteristic.UUID.data isEqualToData:countCharacteristicUuid_.data]) {
             NSLog(@"Found the notification characteristic");
+#ifdef ENABLE_CHARACTERISTIC_UPDATES
             [peripheral setNotifyValue:YES forCharacteristic:characteristic];
+#endif
         }
         if([characteristic.UUID.data isEqualToData:channelCharacteristicUuid_.data]) {
             NSLog(@"Found the L2CAP PSM characteristic, asking for a read");
@@ -125,7 +130,9 @@ static uint64_t getMachTimestampUs() {
         if(characteristic.value != nil && characteristic.value.length == 2) {
             const uint16_t* cbData = (const uint16_t*)characteristic.value.bytes;
             NSLog(@"Read L2CAP channel PSM: %hu", cbData[0]);
+#ifdef ENABLE_L2CAP_UPDATES
             [peripheral openL2CAPChannel:cbData[0]];
+#endif
         }
     }
 }
