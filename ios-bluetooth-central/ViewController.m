@@ -6,7 +6,10 @@
 //
 
 #import "ViewController.h"
+
 #import <mach/mach_time.h>
+#import <os/log.h>
+#import <os/signpost.h>
 
 static uint64_t getMachTimestampUs() {
     // Get conversion factors from ticks to nanoseconds
@@ -32,6 +35,10 @@ static uint64_t getMachTimestampUs() {
     CBL2CAPChannel* openChannel_;
     
     CBPeripheral* peripheral_;
+    
+    os_log_t _characteristicUpdateLog;
+    os_log_t _characteristicGapLog;
+    os_log_t _streamDataLog;
 }
 
 - (void)viewDidLoad {
@@ -45,6 +52,10 @@ static uint64_t getMachTimestampUs() {
     serviceUuid_ = [CBUUID UUIDWithString:@"13640001-4EC4-4D67-AEAC-380C85DF4043"];
     countCharacteristicUuid_ = [CBUUID UUIDWithString:@"13640002-4EC4-4D67-AEAC-380C85DF4043"];
     channelCharacteristicUuid_ = [CBUUID UUIDWithString:@"13640003-4EC4-4D67-AEAC-380C85DF4043"];
+    
+    _characteristicUpdateLog = os_log_create("com.zappar.BLE", "Characteristic Updates");
+    _characteristicGapLog = os_log_create("com.zappar.BLE", "Characteristic Update Gaps");
+    _streamDataLog = os_log_create("com.zappar.BLE", "Stream Data");
 }
 
 - (void)centralManagerDidUpdateState:(CBCentralManager *)central {
@@ -101,8 +112,11 @@ static uint64_t getMachTimestampUs() {
     if([characteristic.UUID.data isEqualToData:countCharacteristicUuid_.data]) {
         // Update the controller state from the BLE data
         const uint16_t* cbData = (const uint16_t*)characteristic.value.bytes;
+        os_signpost_event_emit(_characteristicUpdateLog, OS_SIGNPOST_ID_EXCLUSIVE, "New data", "Value: %hi", cbData[0]);
+        
         NSLog(@"Received updated count: %hu, gap %llu", cbData[0], callbackTime - lastCallbackTime);
         if(callbackTime - lastCallbackTime > 100000) {
+            os_signpost_event_emit(_characteristicGapLog, OS_SIGNPOST_ID_EXCLUSIVE, "Big gap", "Gap: %llu us", callbackTime - lastCallbackTime);
             NSLog(@"BIG GAP!");
         }
         lastCallbackTime = callbackTime;
@@ -141,6 +155,9 @@ static uint64_t getMachTimestampUs() {
             NSInteger len = 0;
             len = [(NSInputStream *)stream read:buf maxLength:1024];
             if(len > 0) {
+                uint16_t firstValue = *((uint16_t*)buf);
+                os_signpost_event_emit(_streamDataLog, OS_SIGNPOST_ID_EXCLUSIVE, "New data", "Value: %hi (Total bytes: %li)", firstValue, len);
+                
                 NSLog(@"Read %li bytes, gap %llu", len, callbackTime - lastCallbackTime);
                 lastCallbackTime = callbackTime;
                 for(int i = 0; i < len - 1; i += 2) {
