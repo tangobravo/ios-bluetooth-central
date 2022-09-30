@@ -104,8 +104,11 @@ static uint64_t getMachTimestampUs() {
 #endif
         }
         if([characteristic.UUID.data isEqualToData:channelCharacteristicUuid_.data]) {
-            NSLog(@"Found the L2CAP PSM characteristic, asking for a read");
-            [peripheral readValueForCharacteristic:characteristic];
+            NSLog(@"Found the L2CAP PSM characteristic");
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2000000000), dispatch_get_main_queue(), ^{
+                NSLog(@"First read of L2CAP channel characteristic");
+                [peripheral readValueForCharacteristic:characteristic];
+            });
         }
     }
 }
@@ -125,13 +128,25 @@ static uint64_t getMachTimestampUs() {
             NSLog(@"BIG GAP!");
         }
         lastCallbackTime = callbackTime;
+        return;
     }
     if([characteristic.UUID isEqual:channelCharacteristicUuid_]) {
         if(characteristic.value != nil && characteristic.value.length == 2) {
             const uint16_t* cbData = (const uint16_t*)characteristic.value.bytes;
-            NSLog(@"Read L2CAP channel PSM: %hu", cbData[0]);
+            const uint16_t psm = cbData[0];
+            NSLog(@"Read L2CAP channel PSM: %hu", psm);
+            if(psm == 0) {
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2000000000), dispatch_get_main_queue(), ^{
+                    NSLog(@"Second read of L2CAP channel characteristic");
+                    [peripheral readValueForCharacteristic:characteristic];
+                });
+                return;
+            }
 #ifdef ENABLE_L2CAP_UPDATES
-            [peripheral openL2CAPChannel:cbData[0]];
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2000000000), dispatch_get_main_queue(), ^{
+                NSLog(@"requesting openL2CAP channel");
+                [peripheral openL2CAPChannel:psm];
+            });
 #endif
         }
     }
