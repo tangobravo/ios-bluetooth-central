@@ -161,17 +161,17 @@ static uint64_t getMachTimestampUs() {
             uint8_t buf[1024];
             NSInteger len = 0;
             len = [(NSInputStream *)stream read:buf maxLength:1024];
-            if(len > 0) {
+            if(len >= 2) {
                 uint16_t firstValue = *((uint16_t*)buf);
                 os_signpost_event_emit(_streamDataLog, OS_SIGNPOST_ID_EXCLUSIVE, "New data", "Value: %hi (Total bytes: %li)", firstValue, len);
                 
-                NSLog(@"Read %li bytes, gap %llu", len, callbackTime - lastCallbackTime);
+                NSLog(@"Read %li bytes, gap %llu, count %hu", len, callbackTime - lastCallbackTime, firstValue);
                 lastCallbackTime = callbackTime;
-                for(int i = 0; i < len - 1; i += 2) {
-                    NSLog(@"Updated count %hu", *(uint16_t*)(buf + i));
+                for(int i = 2; i < len - 1; i += 2) {
+                    NSLog(@"Additional count %hu", *(uint16_t*)(buf + i));
                 }
             } else {
-                NSLog(@"no buffer!");
+                NSLog(@"not enough data!");
             }
             break;
         }
